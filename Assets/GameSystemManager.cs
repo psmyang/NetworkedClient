@@ -10,9 +10,13 @@ public class GameSystemManager : MonoBehaviour
     GameObject infoText1, infoText2;
 
     GameObject joinGameRoomButton;
-    GameObject testButton;
+    GameObject testBoard;
+
+    List<GameObject> testButtonList = new List<GameObject>();
 
     GameObject networkedClient;
+
+    public int OurTeam;
 
     // Start is called before the first frame update
     void Start()
@@ -39,15 +43,21 @@ public class GameSystemManager : MonoBehaviour
                 infoText1 = go;
             else if (go.name == "InfoText2")
                 infoText2 = go;
-            else if (go.name == "TestButton")
-                testButton = go;
+            else if (go.name == "TestBoard")
+                testBoard = go;
         }
 
         buttonSubmit.GetComponent<Button>().onClick.AddListener(SubmitButtonPressed);
         toggleCreate.GetComponent<Toggle>().onValueChanged.AddListener(ToggleCreateValueChanged);
         toggleLogin.GetComponent<Toggle>().onValueChanged.AddListener(ToggleLoginValueChanged);
         joinGameRoomButton.GetComponent<Button>().onClick.AddListener(JoinGameRoomButtonPressed);
-        testButton.GetComponent<Button>().onClick.AddListener(TestButtonPressed);
+
+        for (int i = 0; i < testBoard.transform.childCount; i++)
+        {
+            int index = i;
+            testButtonList.Add(testBoard.transform.GetChild(index).gameObject);
+            testButtonList[i].GetComponent<Button>().onClick.AddListener(delegate { TestButtonPressed(index); });
+        }
 
         ChangeState(GameStates.LoginMenu);
     }
@@ -86,7 +96,10 @@ public class GameSystemManager : MonoBehaviour
         infoText1.SetActive(false);
         infoText2.SetActive(false);
 
-        testButton.SetActive(false);
+        foreach (var square in testButtonList)
+        {
+            square.SetActive(false);
+        }
 
         if (newState == GameStates.LoginMenu)
         {
@@ -106,10 +119,12 @@ public class GameSystemManager : MonoBehaviour
         {
             // Back Button, loading UI
         }
-        else if (newState == GameStates.TicTacToe)
+        else if (newState == GameStates.Test)
         {
-            // Set TicTacToe stuff to active
-            testButton.SetActive(true);
+            foreach (var square in testButtonList)
+            {
+                square.SetActive(true);
+            }
         }
     }
 
@@ -119,19 +134,59 @@ public class GameSystemManager : MonoBehaviour
         ChangeState(GameStates.WaitingInQueueForOtherPlayer);
     }
 
-    public void TestButtonPressed()
+    public void SetTurn(int turn)
     {
-        networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.TicTacToePlay + "");
+        if (turn == TurnSignifier.MyTurn)
+        {
+            // Enable squares
+            foreach (var square in testButtonList)
+            {
+                square.GetComponent<Button>().interactable = true;
+            }
+        }
+        else if (turn == TurnSignifier.TheirTurn)
+        {
+            // Disable squares
+            foreach (var square in testButtonList)
+            {
+                square.GetComponent<Button>().interactable = false;
+            }
+        }
+    }
+
+    public void SetOpponentPlay(int index, int team)
+    {
+        if (team == TeamSignifier.O)
+            testButtonList[index].transform.GetChild(0).GetComponent<Text>().text = "O";
+        if (team == TeamSignifier.X)
+            testButtonList[index].transform.GetChild(0).GetComponent<Text>().text = "X";
+    }
+
+    public void TestButtonPressed(int index)
+    {
+        // Set to not our turn
+        SetTurn(TurnSignifier.TheirTurn);
+
+        // Update board
+        if (OurTeam == TeamSignifier.O)
+            testButtonList[index].transform.GetChild(0).GetComponent<Text>().text = "O";
+        if (OurTeam == TeamSignifier.X)
+            testButtonList[index].transform.GetChild(0).GetComponent<Text>().text = "X";
+
+        networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.TestPlay + "," + index);
     }
 }
 
-
+static public class TurnSignifier
+{
+    public const int MyTurn = 0;
+    public const int TheirTurn = 1;
+}
 
 static public class GameStates
 {
     public const int LoginMenu = 1;
     public const int MainMenu = 2;
     public const int WaitingInQueueForOtherPlayer = 3;
-
-    public const int TicTacToe = 4;
+    public const int Test = 4;
 }

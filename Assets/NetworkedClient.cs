@@ -131,7 +131,7 @@ public class NetworkedClient : MonoBehaviour
         else if (signifier == ServerToClientSignifiers.GameStart)
         {
             Debug.Log("Joined a Game!");
-            gameSystemManager.GetComponent<GameSystemManager>().ChangeState(GameStates.TicTacToe);
+            gameSystemManager.GetComponent<GameSystemManager>().ChangeState(GameStates.Test);
         }
         else if (signifier == ServerToClientSignifiers.OpponentPlayed)
         {
@@ -147,12 +147,18 @@ public class NetworkedClient : MonoBehaviour
 
 }
 
+public static class TeamSignifier
+{
+    public const int O = 0;
+    public const int X = 1;
+}
+
 public static class ClientToServerSignifiers
 {
     public const int CreateAccount = 1;
     public const int Login = 2;
     public const int JoinQueueForGameRoom = 3;
-    public const int TicTacToePlay = 4;
+    public const int TestPlay = 4;
 }
 
 public static class ServerToClientSignifiers
