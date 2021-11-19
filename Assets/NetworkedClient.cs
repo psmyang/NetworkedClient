@@ -158,7 +158,10 @@ public class NetworkedClient : MonoBehaviour
 
             gameSystemManager.GetComponent<GameSystemManager>().SetWinLoss(outcome);
             gameSystemManager.GetComponent<GameSystemManager>().ChangeState(GameStates.GameEnd);
-
+        }
+        else if (signifier == ServerToClientSignifiers.TextMessage)
+        {
+            gameSystemManager.GetComponent<GameSystemManager>().DisplayMessage(csv[1]);
         }
     }
 
@@ -183,6 +186,8 @@ public static class ClientToServerSignifiers
     public const int Login = 2;
     public const int JoinQueueForGameRoom = 3;
     public const int TestPlay = 4;
+    public const int LeaveRoom = 5;
+    public const int TextMessage = 6;
 }
 
 public static class ServerToClientSignifiers
@@ -194,6 +199,7 @@ public static class ServerToClientSignifiers
     public const int OpponentPlayed = 5;
     public const int GameStart = 6;
     public const int GameOver = 7;
+    public const int TextMessage = 8;
 }
 
 public static class WinStates
@@ -201,4 +207,5 @@ public static class WinStates
     public const int ContinuePlay = 0;
     public const int Win = 1;
     public const int Loss = 2;
+    public const int Tie = 3;
 }

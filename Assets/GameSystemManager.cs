@@ -14,11 +14,16 @@ public class GameSystemManager : MonoBehaviour
 
     GameObject winText, playAgainButton, watchReplayButton;
 
+    GameObject textHistory, chatPanel;
+    GameObject helloButton, niceButton;
+
     List<GameObject> testButtonList = new List<GameObject>();
 
     GameObject networkedClient;
 
     public int OurTeam;
+
+    public GameObject messagePrefab;
 
     // Start is called before the first frame update
     void Start()
@@ -53,14 +58,24 @@ public class GameSystemManager : MonoBehaviour
                 playAgainButton = go;
             else if (go.name == "WatchReplayButton")
                 watchReplayButton = go;
+            else if (go.name == "TextHistory")
+                textHistory = go;
+            else if (go.name == "ChatPanel")
+                chatPanel = go;
+            else if (go.name == "HelloButton")
+                helloButton = go;          
+            else if (go.name == "NiceButton")
+                niceButton = go;           
         }
 
         buttonSubmit.GetComponent<Button>().onClick.AddListener(SubmitButtonPressed);
         toggleCreate.GetComponent<Toggle>().onValueChanged.AddListener(ToggleCreateValueChanged);
         toggleLogin.GetComponent<Toggle>().onValueChanged.AddListener(ToggleLoginValueChanged);
         joinGameRoomButton.GetComponent<Button>().onClick.AddListener(JoinGameRoomButtonPressed);
-        playAgainButton.GetComponent<Button>().onClick.AddListener(JoinGameRoomButtonPressed);
+        playAgainButton.GetComponent<Button>().onClick.AddListener(PlayAgainButtonPressed);
         watchReplayButton.GetComponent<Button>().onClick.AddListener(WatchReplay);
+        helloButton.GetComponent<Button>().onClick.AddListener(HelloButtonPressed);
+        niceButton.GetComponent<Button>().onClick.AddListener(NiceButtonPressed);
 
         for (int i = 0; i < testBoard.transform.childCount; i++)
         {
@@ -107,6 +122,10 @@ public class GameSystemManager : MonoBehaviour
         winText.SetActive(false);
         watchReplayButton.SetActive(false);
         playAgainButton.SetActive(false);
+        textHistory.SetActive(false);
+        chatPanel.SetActive(false);
+        helloButton.SetActive(false);       
+        niceButton.SetActive(false);
 
         foreach (var square in testButtonList)
         {
@@ -137,13 +156,48 @@ public class GameSystemManager : MonoBehaviour
             {
                 square.SetActive(true);
             }
+
+            textHistory.SetActive(true);
+            chatPanel.SetActive(true);
+            helloButton.SetActive(true);
+            niceButton.SetActive(true);
         }
         else if (newState == GameStates.GameEnd)
         {
+            foreach (var square in testButtonList)
+            {
+                square.SetActive(true);
+            }
+
             winText.SetActive(true);
             watchReplayButton.SetActive(true);
             playAgainButton.SetActive(true);
+
+            textHistory.SetActive(true);
+            chatPanel.SetActive(true);
+            helloButton.SetActive(true);
+            niceButton.SetActive(true);
         }
+    }
+
+    public void ResetBoard()
+    {
+        foreach (var square in testButtonList)
+        {
+            square.transform.GetChild(0).GetComponent<Text>().text = "";
+        }
+    }
+
+    public void PlayAgainButtonPressed()
+    {
+        ResetBoard();
+
+        networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.LeaveRoom + "");
+
+        networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.JoinQueueForGameRoom + "");
+
+        ChangeState(GameStates.WaitingInQueueForOtherPlayer);
+
     }
 
     public void JoinGameRoomButtonPressed()
@@ -154,7 +208,7 @@ public class GameSystemManager : MonoBehaviour
 
     public void WatchReplay()
     {
-
+        ResetBoard();
     }
 
     public void SetWinLoss(int winLoss)
@@ -163,9 +217,13 @@ public class GameSystemManager : MonoBehaviour
         {
             winText.GetComponent<Text>().text = "You Win!";
         }
-        else
+        else if (winLoss == WinStates.Loss)
         {
-            winText.GetComponent<Text>().text = "You Lose!";
+            winText.GetComponent<Text>().text = "You Loss";
+        }
+        else if (winLoss == WinStates.Tie)
+        {
+            winText.GetComponent<Text>().text = "It's a Tie.";
         }
     }
 
@@ -173,18 +231,22 @@ public class GameSystemManager : MonoBehaviour
     {
         if (turn == TurnSignifier.MyTurn)
         {
+            // Enable squares
             foreach (var square in testButtonList)
             {
-                square.GetComponent<Button>().interactable = true;
+                // Check if there is something in that square
+                if (square.transform.GetChild(0).GetComponent<Text>().text == "")
+                    square.GetComponent<Button>().interactable = true;
             }
         }
         else if (turn == TurnSignifier.TheirTurn)
         {
+            // Disable squares
             foreach (var square in testButtonList)
             {
                 square.GetComponent<Button>().interactable = false;
             }
-        }       
+        }
     }
 
     public void SetOpponentPlay(int index, int team)
@@ -207,6 +269,46 @@ public class GameSystemManager : MonoBehaviour
             testButtonList[index].transform.GetChild(0).GetComponent<Text>().text = "X";
 
         networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.TestPlay + "," + index);
+    }
+
+    public void HelloButtonPressed()
+    {
+        SendTextMessage("Hello!");
+    }
+  
+
+    public void NiceButtonPressed()
+    {
+        SendTextMessage("Nice!");
+    }
+
+    public void SendTextMessage(string msg)
+    {
+        if (msg != "")
+        {
+            var csv = msg.Split(',');
+            string newMsg = "";
+
+            foreach (var str in csv)
+            {
+                newMsg += str + " ";
+            }
+
+            networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.TextMessage + "," + newMsg);
+        }
+    }
+
+    public void DisplayMessage(string msg)
+    {
+        var content = textHistory.transform.GetChild(0).GetChild(0);
+
+        GameObject text = Instantiate(messagePrefab);
+        text.GetComponent<Text>().text = msg;
+        text.transform.SetParent(content);
+
+        var scrollview = textHistory.GetComponent<ScrollRect>();
+
+        scrollview.verticalNormalizedPosition = 0;
     }
 }
 
