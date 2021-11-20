@@ -12,14 +12,17 @@ public class GameSystemManager : MonoBehaviour
     GameObject joinGameRoomButton;
     GameObject testBoard;
 
-    GameObject winText, playAgainButton, watchReplayButton;
+    GameObject winText, returnButton, backButton;
 
     GameObject textHistory, chatPanel;
     GameObject helloButton, niceButton;
+    GameObject inputMessageField, sendButton;
+
+    GameObject replayStepsPanel, saveButton, playAgainButton, watchReplayButton;
 
     List<GameObject> testButtonList = new List<GameObject>();
 
-    GameObject networkedClient;
+    GameObject networkedClient, replayManager;
 
     public int OurTeam;
 
@@ -54,8 +57,6 @@ public class GameSystemManager : MonoBehaviour
                 testBoard = go;
             else if (go.name == "WinText")
                 winText = go;
-            else if (go.name == "PlayAgainButton")
-                playAgainButton = go;
             else if (go.name == "WatchReplayButton")
                 watchReplayButton = go;
             else if (go.name == "TextHistory")
@@ -63,9 +64,19 @@ public class GameSystemManager : MonoBehaviour
             else if (go.name == "ChatPanel")
                 chatPanel = go;
             else if (go.name == "HelloButton")
-                helloButton = go;          
+                helloButton = go;
             else if (go.name == "NiceButton")
-                niceButton = go;           
+                niceButton = go;
+            else if (go.name == "InputMessage")
+                inputMessageField = go;
+            else if (go.name == "SendButton")
+                sendButton = go;
+            else if (go.name == "SaveButton")
+                saveButton = go;
+            else if (go.name == "ReplayPanel")
+                replayStepsPanel = go;
+            else if (go.GetComponent<ReplayManager>() != null)
+                replayManager = go;
         }
 
         buttonSubmit.GetComponent<Button>().onClick.AddListener(SubmitButtonPressed);
@@ -76,6 +87,8 @@ public class GameSystemManager : MonoBehaviour
         watchReplayButton.GetComponent<Button>().onClick.AddListener(WatchReplay);
         helloButton.GetComponent<Button>().onClick.AddListener(HelloButtonPressed);
         niceButton.GetComponent<Button>().onClick.AddListener(NiceButtonPressed);
+        sendButton.GetComponent<Button>().onClick.AddListener(SendButtonPressed);
+        saveButton.GetComponent<Button>().onClick.AddListener(SaveButtonPressed);
 
         for (int i = 0; i < testBoard.transform.childCount; i++)
         {
@@ -124,8 +137,10 @@ public class GameSystemManager : MonoBehaviour
         playAgainButton.SetActive(false);
         textHistory.SetActive(false);
         chatPanel.SetActive(false);
-        helloButton.SetActive(false);       
+        helloButton.SetActive(false);
         niceButton.SetActive(false);
+        saveButton.SetActive(false);
+        replayStepsPanel.SetActive(false);
 
         foreach (var square in testButtonList)
         {
@@ -157,6 +172,13 @@ public class GameSystemManager : MonoBehaviour
                 square.SetActive(true);
             }
 
+            var content = textHistory.transform.GetChild(0).GetChild(0);
+
+            for (int i = content.childCount - 1; i >= 0; i--)
+            {
+                Destroy(content.GetChild(i).gameObject);
+            }
+
             textHistory.SetActive(true);
             chatPanel.SetActive(true);
             helloButton.SetActive(true);
@@ -170,13 +192,23 @@ public class GameSystemManager : MonoBehaviour
             }
 
             winText.SetActive(true);
-            watchReplayButton.SetActive(true);
+            //watchReplayButton.SetActive(true);
+            saveButton.SetActive(true);
             playAgainButton.SetActive(true);
 
             textHistory.SetActive(true);
             chatPanel.SetActive(true);
             helloButton.SetActive(true);
             niceButton.SetActive(true);
+        }
+        else if (newState == GameStates.Replay)
+        {
+            foreach (var square in testButtonList)
+            {
+                square.SetActive(true);
+            }
+
+            replayStepsPanel.SetActive(true);
         }
     }
 
@@ -186,6 +218,25 @@ public class GameSystemManager : MonoBehaviour
         {
             square.transform.GetChild(0).GetComponent<Text>().text = "";
         }
+    }
+
+    public void WatchReplay()
+    {
+        ResetBoard();
+
+        networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.LeaveRoom + "");
+
+        replayManager.GetComponent<ReplayManager>().LoadReplayInformation();
+
+        ChangeState(GameStates.Replay);
+    }
+
+    public void SaveButtonPressed()
+    {
+        networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.RequestReplay + "");
+
+        saveButton.SetActive(false);
+        watchReplayButton.SetActive(true);
     }
 
     public void PlayAgainButtonPressed()
@@ -206,10 +257,6 @@ public class GameSystemManager : MonoBehaviour
         ChangeState(GameStates.WaitingInQueueForOtherPlayer);
     }
 
-    public void WatchReplay()
-    {
-        ResetBoard();
-    }
 
     public void SetWinLoss(int winLoss)
     {
@@ -275,7 +322,7 @@ public class GameSystemManager : MonoBehaviour
     {
         SendTextMessage("Hello!");
     }
-  
+
 
     public void NiceButtonPressed()
     {
@@ -298,17 +345,27 @@ public class GameSystemManager : MonoBehaviour
         }
     }
 
+
+    public void SendButtonPressed()
+    {
+        var inputField = inputMessageField.GetComponent<InputField>();
+        var text = inputField.text;
+
+        SendTextMessage(text);
+
+        inputField.text = "";
+    }
+
     public void DisplayMessage(string msg)
     {
         var content = textHistory.transform.GetChild(0).GetChild(0);
+        var scrollbar = textHistory.transform.GetChild(1).GetComponent<Scrollbar>();
 
         GameObject text = Instantiate(messagePrefab);
         text.GetComponent<Text>().text = msg;
         text.transform.SetParent(content);
 
-        var scrollview = textHistory.GetComponent<ScrollRect>();
-
-        scrollview.verticalNormalizedPosition = 0;
+        scrollbar.value = 0;
     }
 }
 
@@ -325,4 +382,5 @@ static public class GameStates
     public const int WaitingInQueueForOtherPlayer = 3;
     public const int Test = 4;
     public const int GameEnd = 5;
+    public const int Replay = 6;
 }
