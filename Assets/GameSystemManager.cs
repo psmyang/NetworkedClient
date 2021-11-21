@@ -77,18 +77,23 @@ public class GameSystemManager : MonoBehaviour
                 replayStepsPanel = go;
             else if (go.GetComponent<ReplayManager>() != null)
                 replayManager = go;
+            else if (go.name == "ReturnButton")
+                returnButton = go;
+            else if (go.name == "BackButton")
+                backButton = go;
         }
 
         buttonSubmit.GetComponent<Button>().onClick.AddListener(SubmitButtonPressed);
         toggleCreate.GetComponent<Toggle>().onValueChanged.AddListener(ToggleCreateValueChanged);
         toggleLogin.GetComponent<Toggle>().onValueChanged.AddListener(ToggleLoginValueChanged);
-        joinGameRoomButton.GetComponent<Button>().onClick.AddListener(JoinGameRoomButtonPressed);
-        playAgainButton.GetComponent<Button>().onClick.AddListener(PlayAgainButtonPressed);
+        joinGameRoomButton.GetComponent<Button>().onClick.AddListener(JoinGameRoomButtonPressed);       
         watchReplayButton.GetComponent<Button>().onClick.AddListener(WatchReplay);
         helloButton.GetComponent<Button>().onClick.AddListener(HelloButtonPressed);
         niceButton.GetComponent<Button>().onClick.AddListener(NiceButtonPressed);
         sendButton.GetComponent<Button>().onClick.AddListener(SendButtonPressed);
         saveButton.GetComponent<Button>().onClick.AddListener(SaveButtonPressed);
+        returnButton.GetComponent<Button>().onClick.AddListener(MenuButtonPressed);
+        backButton.GetComponent<Button>().onClick.AddListener(MenuButtonPressed);
 
         for (int i = 0; i < testBoard.transform.childCount; i++)
         {
@@ -134,13 +139,14 @@ public class GameSystemManager : MonoBehaviour
         infoText2.SetActive(false);
         winText.SetActive(false);
         watchReplayButton.SetActive(false);
-        playAgainButton.SetActive(false);
         textHistory.SetActive(false);
         chatPanel.SetActive(false);
         helloButton.SetActive(false);
         niceButton.SetActive(false);
         saveButton.SetActive(false);
         replayStepsPanel.SetActive(false);
+        backButton.SetActive(false);
+        returnButton.SetActive(false);
 
         foreach (var square in testButtonList)
         {
@@ -192,14 +198,12 @@ public class GameSystemManager : MonoBehaviour
             }
 
             winText.SetActive(true);
-            //watchReplayButton.SetActive(true);
-            saveButton.SetActive(true);
-            playAgainButton.SetActive(true);
-
+            saveButton.SetActive(true);           
             textHistory.SetActive(true);
             chatPanel.SetActive(true);
             helloButton.SetActive(true);
             niceButton.SetActive(true);
+            returnButton.SetActive(true);
         }
         else if (newState == GameStates.Replay)
         {
@@ -209,6 +213,7 @@ public class GameSystemManager : MonoBehaviour
             }
 
             replayStepsPanel.SetActive(true);
+            backButton.SetActive(true);
         }
     }
 
@@ -366,6 +371,15 @@ public class GameSystemManager : MonoBehaviour
         text.transform.SetParent(content);
 
         scrollbar.value = 0;
+    }
+
+    public void MenuButtonPressed()
+    {
+        ResetBoard();
+
+        networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.LeaveRoom + "");
+
+        ChangeState(GameStates.MainMenu);
     }
 }
 
