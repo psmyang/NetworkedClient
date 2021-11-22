@@ -92,7 +92,7 @@ public class NetworkedClient : MonoBehaviour
             hostID = NetworkTransport.AddHost(topology, 0);
             Debug.Log("Socket open.  Host ID = " + hostID);
 
-            connectionID = NetworkTransport.Connect(hostID, "2607:fea8:3a9f:a93d:256a:c87a:642:7065", socketPort, 0, out error); // server is local on network
+            connectionID = NetworkTransport.Connect(hostID, "2607:fea8:3a9f:a93d:fccb:39a3:f0af:2023", socketPort, 0, out error); // server is local on network
 
             if (error == 0)
             {
@@ -170,6 +170,13 @@ public class NetworkedClient : MonoBehaviour
         {
             replayManager.GetComponent<ReplayManager>().SaveReplay(csv[1]);
         }
+        else if (signifier == ServerToClientSignifiers.ServerList)
+        {
+            int roomID = int.Parse(csv[1]);
+            int observerCount = int.Parse(csv[2]);
+
+            gameSystemManager.GetComponent<GameSystemManager>().CreateRoom(roomID, observerCount);
+        }
     }
 
     public bool IsConnected()
@@ -196,6 +203,8 @@ public static class ClientToServerSignifiers
     public const int LeaveRoom = 5;
     public const int TextMessage = 6;
     public const int RequestReplay = 7;
+    public const int GetServerList = 8;
+    public const int SpectateGame = 9;
 }
 
 public static class ServerToClientSignifiers
@@ -209,6 +218,7 @@ public static class ServerToClientSignifiers
     public const int GameOver = 7;
     public const int TextMessage = 8;
     public const int ReplayInformation = 9;
+    public const int ServerList = 10;
 }
 
 public static class WinStates

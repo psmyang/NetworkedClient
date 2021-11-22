@@ -10,23 +10,28 @@ public class GameSystemManager : MonoBehaviour
     GameObject infoText1, infoText2;
 
     GameObject joinGameRoomButton;
-    GameObject testBoard;
+    
 
-    GameObject winText, returnButton, backButton;
+    GameObject winText, returnButton, backButton, refreshButton;
 
     GameObject textHistory, chatPanel;
     GameObject helloButton, niceButton;
     GameObject inputMessageField, sendButton;
 
+    GameObject gameRoom;
+    List<GameObject> gameRoomButtonList = new List<GameObject>();
+
     GameObject replayStepsPanel, saveButton, playAgainButton, watchReplayButton;
 
+    GameObject testBoard;
     List<GameObject> testButtonList = new List<GameObject>();
 
     GameObject networkedClient, replayManager;
 
     public int OurTeam;
 
-    public GameObject messagePrefab;
+    public GameObject TextMessage;
+    public GameObject gameRoomPrefab;
 
     // Start is called before the first frame update
     void Start()
@@ -81,19 +86,24 @@ public class GameSystemManager : MonoBehaviour
                 returnButton = go;
             else if (go.name == "BackButton")
                 backButton = go;
+            else if (go.name == "RefreshButton")
+                refreshButton = go;
+            else if (go.name == "GameRoom")
+                gameRoom = go;
         }
 
         buttonSubmit.GetComponent<Button>().onClick.AddListener(SubmitButtonPressed);
         toggleCreate.GetComponent<Toggle>().onValueChanged.AddListener(ToggleCreateValueChanged);
         toggleLogin.GetComponent<Toggle>().onValueChanged.AddListener(ToggleLoginValueChanged);
         joinGameRoomButton.GetComponent<Button>().onClick.AddListener(JoinGameRoomButtonPressed);       
-        watchReplayButton.GetComponent<Button>().onClick.AddListener(WatchReplay);
+        //watchReplayButton.GetComponent<Button>().onClick.AddListener(WatchReplay);
         helloButton.GetComponent<Button>().onClick.AddListener(HelloButtonPressed);
         niceButton.GetComponent<Button>().onClick.AddListener(NiceButtonPressed);
         sendButton.GetComponent<Button>().onClick.AddListener(SendButtonPressed);
         saveButton.GetComponent<Button>().onClick.AddListener(SaveButtonPressed);
         returnButton.GetComponent<Button>().onClick.AddListener(MenuButtonPressed);
         backButton.GetComponent<Button>().onClick.AddListener(MenuButtonPressed);
+        refreshButton.GetComponent<Button>().onClick.AddListener(AskForRooms);
 
         for (int i = 0; i < testBoard.transform.childCount; i++)
         {
@@ -147,6 +157,8 @@ public class GameSystemManager : MonoBehaviour
         replayStepsPanel.SetActive(false);
         backButton.SetActive(false);
         returnButton.SetActive(false);
+        refreshButton.SetActive(false);
+        gameRoom.SetActive(false);
 
         foreach (var square in testButtonList)
         {
@@ -166,6 +178,10 @@ public class GameSystemManager : MonoBehaviour
         else if (newState == GameStates.MainMenu)
         {
             joinGameRoomButton.SetActive(true);
+            refreshButton.SetActive(true);
+            gameRoom.SetActive(true);
+
+            AskForRooms();
         }
         else if (newState == GameStates.WaitingInQueueForOtherPlayer)
         {
@@ -189,9 +205,19 @@ public class GameSystemManager : MonoBehaviour
             chatPanel.SetActive(true);
             helloButton.SetActive(true);
             niceButton.SetActive(true);
+
+            if (OurTeam == TeamSignifier.None)
+            {
+                returnButton.SetActive(true);
+            }
         }
         else if (newState == GameStates.GameEnd)
         {
+            foreach (var square in testButtonList)
+            {
+                square.GetComponent<Button>().interactable = false;
+            }
+
             foreach (var square in testButtonList)
             {
                 square.SetActive(true);
@@ -227,6 +253,11 @@ public class GameSystemManager : MonoBehaviour
 
     public void WatchReplay()
     {
+        foreach (var square in testButtonList)
+        {
+            square.GetComponent<Button>().interactable = false;
+        }
+
         ResetBoard();
 
         networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.LeaveRoom + "");
@@ -281,6 +312,17 @@ public class GameSystemManager : MonoBehaviour
 
     public void SetTurn(int turn)
     {
+        if (OurTeam == TeamSignifier.None)
+        {
+            // Disable squares
+            foreach (var square in testButtonList)
+            {
+                square.GetComponent<Button>().interactable = false;
+            }
+
+            return;
+        }
+
         if (turn == TurnSignifier.MyTurn)
         {
             // Enable squares
@@ -366,7 +408,7 @@ public class GameSystemManager : MonoBehaviour
         var content = textHistory.transform.GetChild(0).GetChild(0);
         var scrollbar = textHistory.transform.GetChild(1).GetComponent<Scrollbar>();
 
-        GameObject text = Instantiate(messagePrefab);
+        GameObject text = Instantiate(TextMessage);
         text.GetComponent<Text>().text = msg;
         text.transform.SetParent(content);
 
@@ -381,12 +423,49 @@ public class GameSystemManager : MonoBehaviour
 
         ChangeState(GameStates.MainMenu);
     }
+    public void AskForRooms()
+    {
+        // Remove all rooms from room panel
+        var content = gameRoom.transform.GetChild(0).GetChild(0);
+
+        for (int i = content.childCount - 1; i >= 0; i--)
+        {
+            Destroy(content.GetChild(i).gameObject);
+        }
+
+        gameRoomButtonList.Clear();
+
+        networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.GetServerList + ",");
+    }
+
+    public void CreateRoom(int index, int spectatorCount)
+    {
+        var content = gameRoom.transform.GetChild(0).GetChild(0);
+
+        GameObject room = Instantiate(gameRoomPrefab);
+        room.transform.SetParent(content);
+        var text = room.transform.GetChild(0).GetComponent<Text>();
+        gameRoomButtonList.Add(room);
+
+        text.text = "Game Room " + (index + 1);
+
+        text.text += " | Watching: " + spectatorCount;
+
+        var spectateButton = room.transform.GetChild(1).GetComponent<Button>();
+        spectateButton.onClick.AddListener(delegate { JoinRoomAsObserver(index); });
+    }
+
+    private void JoinRoomAsObserver(int index)
+    {
+        networkedClient.GetComponent<NetworkedClient>().SendMessageToHost(ClientToServerSignifiers.SpectateGame + "," + index);
+    }
 }
 
 static public class TurnSignifier
 {
     public const int MyTurn = 0;
     public const int TheirTurn = 1;
+    public const int Observer = 2;
 }
 
 static public class GameStates
