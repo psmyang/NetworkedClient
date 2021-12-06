@@ -18,7 +18,7 @@ public class NetworkedClient : MonoBehaviour
     int ourClientID;
 
     GameObject gameSystemManager;
-    GameObject replayManager;
+    GameObject replaySystemManager;
 
     // Start is called before the first frame update
     void Start()
@@ -29,8 +29,8 @@ public class NetworkedClient : MonoBehaviour
         {
             if (go.GetComponent<GameSystemManager>() != null)
                 gameSystemManager = go;
-            if (go.GetComponent<ReplayManager>() != null)
-                replayManager = go;
+            if (go.GetComponent<ReplaySystemManager>() != null)
+                replaySystemManager = go;
         }
 
         Connect();
@@ -39,8 +39,6 @@ public class NetworkedClient : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //if (Input.GetKeyDown(KeyCode.S))
-        //    SendMessageToHost("Hello from client");
 
         UpdateNetworkConnection();
     }
@@ -66,7 +64,6 @@ public class NetworkedClient : MonoBehaviour
                 case NetworkEventType.DataEvent:
                     string msg = Encoding.Unicode.GetString(recBuffer, 0, dataSize);
                     ProcessRecievedMsg(msg, recConnectionID);
-                    //Debug.Log("got msg = " + msg);
                     break;
                 case NetworkEventType.DisconnectEvent:
                     isConnected = false;
@@ -75,7 +72,7 @@ public class NetworkedClient : MonoBehaviour
             }
         }
     }
-
+    
     private void Connect()
     {
 
@@ -92,7 +89,7 @@ public class NetworkedClient : MonoBehaviour
             hostID = NetworkTransport.AddHost(topology, 0);
             Debug.Log("Socket open.  Host ID = " + hostID);
 
-            connectionID = NetworkTransport.Connect(hostID, "2607:fea8:3a9f:a93d:fccb:39a3:f0af:2023", socketPort, 0, out error); // server is local on network
+            connectionID = NetworkTransport.Connect(hostID, "fe80::454b:9621:4ad5:4039%12", socketPort, 0, out error); // server is local on network
 
             if (error == 0)
             {
@@ -103,12 +100,12 @@ public class NetworkedClient : MonoBehaviour
             }
         }
     }
-
+    
     public void Disconnect()
     {
         NetworkTransport.Disconnect(hostID, connectionID, out error);
     }
-
+    
     public void SendMessageToHost(string msg)
     {
         byte[] buffer = Encoding.Unicode.GetBytes(msg);
@@ -134,11 +131,10 @@ public class NetworkedClient : MonoBehaviour
         else if (signifier == ServerToClientSignifiers.GameStart)
         {
             Debug.Log("Joined a Game!");
-
             gameSystemManager.GetComponent<GameSystemManager>().OurTeam = int.Parse(csv[1]);
 
             gameSystemManager.GetComponent<GameSystemManager>().SetTurn(int.Parse(csv[1]));
-            gameSystemManager.GetComponent<GameSystemManager>().ChangeState(GameStates.Test);
+            gameSystemManager.GetComponent<GameSystemManager>().ChangeState(GameStates.TicTacToe);
         }
         else if (signifier == ServerToClientSignifiers.OpponentPlayed)
         {
@@ -157,10 +153,11 @@ public class NetworkedClient : MonoBehaviour
         {
             var outcome = int.Parse(csv[1]);
 
-            Debug.Log("Game over");
+            Debug.Log("Game is over");
 
             gameSystemManager.GetComponent<GameSystemManager>().SetWinLoss(outcome);
             gameSystemManager.GetComponent<GameSystemManager>().ChangeState(GameStates.GameEnd);
+
         }
         else if (signifier == ServerToClientSignifiers.TextMessage)
         {
@@ -168,7 +165,7 @@ public class NetworkedClient : MonoBehaviour
         }
         else if (signifier == ServerToClientSignifiers.ReplayInformation)
         {
-            replayManager.GetComponent<ReplayManager>().SaveReplay(csv[1]);
+            replaySystemManager.GetComponent<ReplaySystemManager>().SaveReplay(csv[1]);
         }
         else if (signifier == ServerToClientSignifiers.ServerList)
         {
@@ -198,10 +195,15 @@ public static class ClientToServerSignifiers
 {
     public const int CreateAccount = 1;
     public const int Login = 2;
+
     public const int JoinQueueForGameRoom = 3;
-    public const int TestPlay = 4;
+
+    public const int TicTacToePlay = 4;
+
     public const int LeaveRoom = 5;
+
     public const int TextMessage = 6;
+
     public const int RequestReplay = 7;
     public const int GetServerList = 8;
     public const int SpectateGame = 9;
@@ -213,18 +215,23 @@ public static class ServerToClientSignifiers
     public const int LoginFailed = 2;
     public const int AccountCreationComplete = 3;
     public const int AccountCreationFailed = 4;
+
     public const int OpponentPlayed = 5;
     public const int GameStart = 6;
+
     public const int GameOver = 7;
+
     public const int TextMessage = 8;
+
     public const int ReplayInformation = 9;
+
     public const int ServerList = 10;
 }
 
 public static class WinStates
 {
     public const int ContinuePlay = 0;
-    public const int Win = 1;
-    public const int Loss = 2;
+    public const int OsWin = 1;
+    public const int XsWin = 2;
     public const int Tie = 3;
 }
